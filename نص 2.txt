@@ -1,0 +1,37 @@
+import time
+from telegram import Bot
+
+# بيانات البوت والمعرف
+TOKEN = "7631899541:AAFqFfFTxkoR__Lu_yYO4_JhQx8EfSauPR8"
+CHAT_ID = 1791813866
+
+bot = Bot(token=TOKEN)
+
+# قائمة العملات اللي رح نرسل توصيات عليها
+symbols = [
+    "BTCUSDT", "ETHUSDT", "BNBUSDT", "XRPUSDT", "ADAUSDT",
+    "SOLUSDT", "DOTUSDT", "DOGEUSDT", "AVAXUSDT", "MATICUSDT",
+    "LTCUSDT", "LINKUSDT", "ATOMUSDT", "ALGOUSDT", "FTMUSDT",
+    "TRXUSDT", "NEARUSDT", "XLMUSDT", "BCHUSDT", "XAUUSD"  # الذهب أضفته آخر واحد
+]
+
+def get_signal(symbol):
+    # هنا تحط طريقة استخراج توصية بيع أو شراء (مثال عشوائي)
+    import random
+    return random.choice(["شراء", "بيع", "انتظار"])
+
+def send_recommendations():
+    message = "توصيات السوق:\n\n"
+    for symbol in symbols:
+        signal = get_signal(symbol)
+        message += f"{symbol}: {signal}\n"
+    bot.send_message(chat_id=CHAT_ID, text=message)
+
+if __name__ == "__main__":
+    while True:
+        try:
+            send_recommendations()
+            print("تم إرسال التوصيات.")
+        except Exception as e:
+            print("خطأ في الإرسال:", e)
+        time.sleep(300)  # ينتظر 5 دقائق (300 ثانية)
