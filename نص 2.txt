@@ -1,37 +1,54 @@
-import time
+import pandas as pd
+import yfinance as yf
+import ta
 from telegram import Bot
+import time
+import logging
 
-# بيانات البوت والمعرف
+# إعداد التوكن والمعرف
 TOKEN = "7631899541:AAFqFfFTxkoR__Lu_yYO4_JhQx8EfSauPR8"
 CHAT_ID = 1791813866
 
+# تهيئة البوت
 bot = Bot(token=TOKEN)
 
-# قائمة العملات اللي رح نرسل توصيات عليها
+# تفعيل تسجيل الأخطاء
+logging.basicConfig(level=logging.INFO)
+
+# قائمة العملات المطلوبة
 symbols = [
-    "BTCUSDT", "ETHUSDT", "BNBUSDT", "XRPUSDT", "ADAUSDT",
-    "SOLUSDT", "DOTUSDT", "DOGEUSDT", "AVAXUSDT", "MATICUSDT",
-    "LTCUSDT", "LINKUSDT", "ATOMUSDT", "ALGOUSDT", "FTMUSDT",
-    "TRXUSDT", "NEARUSDT", "XLMUSDT", "BCHUSDT", "XAUUSD"  # الذهب أضفته آخر واحد
+    "BTC-USD", "ETH-USD", "BNB-USD", "SOL-USD", "ADA-USD",
+    "XRP-USD", "DOGE-USD", "DOT-USD", "AVAX-USD", "TRX-USD",
+    "MATIC-USD", "LTC-USD", "SHIB-USD", "LINK-USD", "ATOM-USD",
+    "XLM-USD", "NEAR-USD", "ICP-USD", "FTM-USD", "XAUUSD=X"  # الذهب
 ]
 
+# الدالة لجلب التوصية
 def get_signal(symbol):
-    # هنا تحط طريقة استخراج توصية بيع أو شراء (مثال عشوائي)
-    import random
-    return random.choice(["شراء", "بيع", "انتظار"])
+    try:
+        df = yf.download(symbol, interval="5m", period="1d")
+        df.dropna(inplace=True)
+        if df.empty:
+            return None
 
-def send_recommendations():
-    message = "توصيات السوق:\n\n"
+        df["rsi"] = ta.momentum.RSIIndicator(close=df["Close"]).rsi()
+        df["ema_20"] = ta.trend.EMAIndicator(close=df["Close"], window=20).ema_indicator()
+
+        latest = df.iloc[-1]
+        if latest["rsi"] < 30 and latest["Close"] > latest["ema_20"]:
+            return f"✅ شراء محتمل: {symbol}"
+        elif latest["rsi"] > 70 and latest["Close"] < latest["ema_20"]:
+            return f"⚠️ بيع محتمل: {symbol}"
+        else:
+            return None
+    except Exception as e:
+        logging.error(f"{symbol} - خطأ: {e}")
+        return None
+
+# التكرار كل 5 دقائق
+while True:
     for symbol in symbols:
         signal = get_signal(symbol)
-        message += f"{symbol}: {signal}\n"
-    bot.send_message(chat_id=CHAT_ID, text=message)
-
-if __name__ == "__main__":
-    while True:
-        try:
-            send_recommendations()
-            print("تم إرسال التوصيات.")
-        except Exception as e:
-            print("خطأ في الإرسال:", e)
-        time.sleep(300)  # ينتظر 5 دقائق (300 ثانية)
+        if signal:
+            bot.send_message(chat_id=CHAT_ID, text=signal)
+    time.sleep(300)  # كل 5 دقائق
